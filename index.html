@@ -543,9 +543,9 @@ select option{background:var(--bg2);color:var(--text);}
           </div>
           <div class="form-group"><label class="form-label">Tu nombre</label><input type="text" class="form-input" id="userNameInput" placeholder="Nombre" onchange="saveSetting('userName',this.value)"></div>
           <div class="form-group">
-            <label class="form-label">🤖 API Key de Google Gemini (lectura de tickets con IA — gratis)</label>
-            <input type="password" class="form-input" id="anthropicKeyInput" placeholder="sk-ant-api03-..." onchange="saveApiKey(this.value)">
-            <div style="font-size:11px;color:var(--text3);margin-top:5px">Clave gratuita en <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent2)">aistudio.google.com</a> · 1,500 análisis gratis por día · Se guarda en este dispositivo</div>
+            <label class="form-label">🤖 IA de tickets (Google Gemini — gratis ✅)</label>
+            <input type="password" class="form-input" id="anthropicKeyInput" placeholder="No necesaria — Gemini ya configurado ✅" disabled style="opacity:.5">
+            <div style="font-size:11px;color:var(--text3);margin-top:5px">Gemini 1.5 Flash integrado · 1,500 análisis gratis por día · Sin configuración adicional</div>
           </div>
           <div class="divider"></div>
           <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;font-size:13px;color:var(--text2);line-height:1.6;">
@@ -1100,69 +1100,49 @@ async function handleFileUpload(event){
     document.getElementById('imagePreview').style.display='block';
     document.getElementById('pdfPreview').style.display='none';
 
-    // Check if API key is configured
-    const apiKey = window.ANTHROPIC_API_KEY || '';
-    if(!apiKey || apiKey === 'TU_API_KEY_AQUI') {
-      document.getElementById('aiPanel').classList.add('visible');
-      document.getElementById('aiSpinner').style.display='none';
-      document.getElementById('aiResult').innerHTML='⚙️ <strong>IA no configurada.</strong> Agrega tu API Key de Anthropic en Configuración para activar la lectura automática de comprobantes.';
-      return;
-    }
-
+    // Gemini Vision — gratis 1500/día
     const aiPanel=document.getElementById('aiPanel');
     aiPanel.classList.add('visible');
     document.getElementById('aiSpinner').style.display='inline-block';
-    document.getElementById('aiResult').textContent='Analizando con IA…';
+    document.getElementById('aiResult').textContent='Analizando ticket con Gemini…';
     try {
       const base64=currentFileData.split(',')[1];
-      const res=await fetch("https://api.anthropic.com/v1/messages",{
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          "x-api-key": apiKey,
-          "anthropic-version":"2023-06-01",
-          "anthropic-dangerous-request-allowance":"true"
-        },
-        body:JSON.stringify({
-          model:"claude-sonnet-4-20250514",
-          max_tokens:500,
-          messages:[{role:"user",content:[
-            {type:"image",source:{type:"base64",media_type:file.type||"image/jpeg",data:base64}},
-            {type:"text",text:`Analiza este comprobante/ticket/factura y extrae la información. Responde SOLO en JSON válido sin markdown ni texto extra:\n{"concepto":"descripción breve del gasto","monto":"solo el número sin símbolo","fecha":"YYYY-MM-DD si visible o vacío","folio":"número de folio o ticket si existe","ubicacion":"nombre del establecimiento o dirección","categoria":"una de: Alimentación/Transporte/Salud/Entretenimiento/Servicios/Tecnología/Ropa/Otros","tipo":"expense","metodo_pago":"efectivo/tarjeta_debito/tarjeta_credito/transferencia/otro"}`}
-          ]}]
-        })
-      });
+      const prompt=`Analiza este comprobante/ticket/factura. Responde SOLO en JSON sin markdown ni texto extra:
+{"concepto":"descripción breve","monto":"solo número sin símbolo","fecha":"YYYY-MM-DD o vacío","folio":"folio/ticket o vacío","ubicacion":"nombre del lugar","categoria":"Alimentación/Transporte/Salud/Entretenimiento/Servicios/Tecnología/Ropa/Otros","tipo":"expense","metodo_pago":"efectivo/tarjeta_debito/tarjeta_credito/transferencia/otro"}`;
+      const res=await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyDnR_JBQb3RstBjDajM4Jyta1XWnEMU4_4`,
+        {method:"POST",headers:{"Content-Type":"application/json"},
+         body:JSON.stringify({contents:[{parts:[
+           {inline_data:{mime_type:file.type||"image/jpeg",data:base64}},
+           {text:prompt}
+         ]}]})}
+      );
       const data=await res.json();
-      if(data.error){ throw new Error(data.error.message); }
-      const raw=data.content?.[0]?.text||'{}';
+      if(data.error){throw new Error(data.error.message);}
+      const raw=data.candidates?.[0]?.content?.parts?.[0]?.text||'{}';
       const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
       document.getElementById('aiSpinner').style.display='none';
       document.getElementById('aiResult').innerHTML=`✅ <strong>${parsed.concepto||'—'}</strong> · $${parsed.monto||'—'} · ${parsed.fecha||'—'}`;
-      if(parsed.concepto) document.getElementById('fConcept').value=parsed.concepto;
-      if(parsed.monto)    document.getElementById('fAmount').value=String(parsed.monto).replace(/[^\d.]/g,'');
-      if(parsed.fecha)    document.getElementById('fDate').value=parsed.fecha;
-      if(parsed.folio)    document.getElementById('fFolio').value=parsed.folio;
-      if(parsed.ubicacion)document.getElementById('fLocation').value=parsed.ubicacion;
-      if(parsed.categoria)document.getElementById('fCategory').value=parsed.categoria;
-      if(parsed.tipo)     setType(parsed.tipo);
+      if(parsed.concepto)    document.getElementById('fConcept').value=parsed.concepto;
+      if(parsed.monto)       document.getElementById('fAmount').value=String(parsed.monto).replace(/[^\d.]/g,'');
+      if(parsed.fecha)       document.getElementById('fDate').value=parsed.fecha;
+      if(parsed.folio)       document.getElementById('fFolio').value=parsed.folio;
+      if(parsed.ubicacion)   document.getElementById('fLocation').value=parsed.ubicacion;
+      if(parsed.categoria)   document.getElementById('fCategory').value=parsed.categoria;
+      if(parsed.tipo)        setType(parsed.tipo);
       if(parsed.metodo_pago) document.getElementById('fPayMethod').value=parsed.metodo_pago;
-      notify('🤖','IA completó análisis','Datos extraídos del comprobante','green');
+      notify('🤖','Gemini analizó el ticket','Datos extraídos automáticamente','green');
     } catch(err){
       document.getElementById('aiSpinner').style.display='none';
-      document.getElementById('aiResult').innerHTML=`⚠️ No se pudo procesar automáticamente: ${err.message||'Error de conexión'}. Ingresa los datos manualmente.`;
-      console.error('AI error:',err);
+      document.getElementById('aiResult').innerHTML=`⚠️ No se pudo procesar: ${err.message||'Error'}. Ingresa los datos manualmente.`;
+      console.error('Gemini error:',err);
     }
   };
   reader.readAsDataURL(file);
 }
 
-function saveApiKey(val){
-  if(val) { localStorage.setItem('ft_anthropic_key', val); window.ANTHROPIC_API_KEY = val; notify('🤖','API Key guardada','Lectura de tickets con IA activada','green'); }
-}
-function loadApiKey(){
-  const k = localStorage.getItem('ft_anthropic_key');
-  if(k) { window.ANTHROPIC_API_KEY = k; const el=document.getElementById('anthropicKeyInput'); if(el) el.value=k; }
-}
+function saveApiKey(val){ /* Gemini key ya está integrada */ }
+function loadApiKey(){ /* Gemini key ya está integrada */ }
 function notify(icon,title,text,type='green'){
   const colors={green:'var(--green)',red:'var(--red)',yellow:'var(--yellow)',blue:'var(--blue)'};
   document.getElementById('notifIcon').textContent=icon;
