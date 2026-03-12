@@ -642,6 +642,7 @@ window.categories   = [];
 window.budgets      = {};
 window.settings     = { currency:'MXN', userName:'' };
 window.currentUser  = null;
+var notifTimer      = null;
 
 const SYM = {MXN:'$',USD:'$',EUR:'€',ARS:'$',COP:'$'};
 function fmt(n){ return (SYM[window.settings?.currency]||'$')+Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -1150,8 +1151,8 @@ function notify(icon,title,text,type='green'){
   document.getElementById('notifText').textContent=text;
   const el=document.getElementById('notification');
   el.style.display='flex'; el.style.opacity='1'; el.style.borderLeftColor=colors[type]||colors.green;
-  if(notifTimer) clearTimeout(notifTimer);
-  notifTimer=setTimeout(()=>{ el.style.opacity='0'; setTimeout(()=>el.style.display='none',300); },3500);
+  if(window.notifTimer) clearTimeout(window.notifTimer);
+  window.notifTimer=setTimeout(()=>{ el.style.opacity='0'; setTimeout(()=>el.style.display='none',300); },3500);
 }
 
 document.addEventListener('click',e=>{
