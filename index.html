@@ -23,7 +23,7 @@
 
 <!-- ✅ API Key de Google Gemini (gratis) -->
 <script>
-  window.GEMINI_API_KEY = 'AIzaSyDnR_JBQb3RstBjDajM4Jyta1XWnEMU4_4';
+  window.GEMINI_API_KEY = 'AIzaSyAGYO3PSpbf0hssINIsNxBTasKWHb4OQpI';
 </script>
 
 <script type="module">
@@ -1110,7 +1110,7 @@ async function handleFileUpload(event){
       const prompt=`Analiza este comprobante/ticket/factura. Responde SOLO en JSON sin markdown ni texto extra:
 {"concepto":"descripción breve","monto":"solo número sin símbolo","fecha":"YYYY-MM-DD o vacío","folio":"folio/ticket o vacío","ubicacion":"nombre del lugar","categoria":"Alimentación/Transporte/Salud/Entretenimiento/Servicios/Tecnología/Ropa/Otros","tipo":"expense","metodo_pago":"efectivo/tarjeta_debito/tarjeta_credito/transferencia/otro"}`;
       const res=await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyDnR_JBQb3RstBjDajM4Jyta1XWnEMU4_4`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${window.GEMINI_API_KEY}`,
         {method:"POST",headers:{"Content-Type":"application/json"},
          body:JSON.stringify({contents:[{parts:[
            {inline_data:{mime_type:file.type||"image/jpeg",data:base64}},
